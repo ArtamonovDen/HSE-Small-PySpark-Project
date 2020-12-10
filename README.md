@@ -40,7 +40,7 @@ docker run -d --name chicagoMap -p 8888:8888 -v <path to /HSE-Small-PySpark-Proj
 Go inside container:
 
 ```shell
-docker exec -it chicagoMap
+docker exec -it chicagoMap bash
 cd work
 ```
 
