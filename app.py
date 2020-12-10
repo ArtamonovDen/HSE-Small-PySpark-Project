@@ -2,8 +2,6 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
-import plotly.express as px
-import dash_leaflet as dl
 from folium.plugins import MarkerCluster
 import json
 import os
@@ -247,5 +245,3 @@ if __name__ == '__main__':
 
     # export PYTHONPATH=/usr/local/spark/python/lib/py4j-0.10.9-src.zip:/usr/local/spark/python:
     app.run_server(debug=False)
-
-    
