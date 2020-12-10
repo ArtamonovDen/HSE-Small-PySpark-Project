@@ -35,7 +35,6 @@ CRIME_TYPES = ['OFFENSE INVOLVING CHILDREN', 'CRIMINAL SEXUAL ASSAULT', 'STALKIN
 app.layout = html.Div([
 
     html.H1("Chicago Criminal Map", style={'text-align': 'center'}),
-
     dcc.Slider(
         id='year-slider',
         min=2001,
@@ -44,22 +43,17 @@ app.layout = html.Div([
         marks={str(year): str(year) for year in range(2001,2021)},
         step=None
     ),
-
     html.Br(),
-
     dcc.Loading(
         html.Iframe(id='crime-heatmap', width='100%', height='600')
     ),
-
     html.Br(),
-    
     dcc.Dropdown(
         options=[ {'label': crime_type.lower(), 'value': crime_type} for crime_type in CRIME_TYPES ],
         value='GAMBLING',
         id='crime-selector'
     ), 
     html.Br(),
-
     html.Div(
         [
             html.Div([
@@ -73,7 +67,6 @@ app.layout = html.Div([
                     html.Iframe(id='special-crime-markers',  width='100%',  height='500')
                 )
             ], className="six columns"),
-               
         ], 
     )
 ])
@@ -82,25 +75,26 @@ app.css.append_css({
     'external_url': 'https://codepen.io/chriddyp/pen/bWLwgP.css'
 })
 
-@app.callback(
-    Output(component_id='crime-heatmap', component_property='srcDoc'),
-    Input(component_id='year-slider', component_property='value'))
-def update_crime_heatmap(selected_year):
+def log(s, m):
+    print('>'*m, s)
 
-    global data
-    container = f"The year chosen by user was: {selected_year}"
-    print('>'*10 +"Callback works")  
-
-    map_path = CRIMINAL_HEATMAP_PATH + f'criminal_heatmap_{selected_year}.html'
+def generate_map(generator, map_path, params):
 
     if not os.path.exists(map_path):
-        print(f'Cached map  {map_path} not found')
-        generate_criminal_heatmap(selected_year, map_path)
+        log(f'Cached map  {map_path} not found', 10)
+        generator(map_path, *params)
 
     with open(map_path) as f:
         map = f.read()
 
     return map
+
+@app.callback(
+    Output(component_id='crime-heatmap', component_property='srcDoc'),
+    Input(component_id='year-slider', component_property='value'))
+def update_crime_heatmap(selected_year):
+    map_path = CRIMINAL_HEATMAP_PATH + f'criminal_heatmap_{selected_year}.html'
+    return generate_map(generate_criminal_heatmap, map_path, [selected_year])
 
 
 @app.callback(
@@ -108,17 +102,8 @@ def update_crime_heatmap(selected_year):
     [Input(component_id='year-slider', component_property='value'),
     Input(component_id='crime-selector', component_property='value')])
 def update_special_crime_heatmap(selected_year, selected_crime):
-
     map_path = SPECIAL_CRIME_HEATMAP_PATH + f'_{selected_crime}_crime_heatmap_{selected_year}.html'
-
-    if not os.path.exists(map_path):
-        print(f'Cached map  {map_path} not found')
-        generate_special_criminal_heatmap(selected_year, selected_crime, map_path)
-
-    with open(map_path) as f:
-        map = f.read()
-
-    return map
+    return generate_map(generate_special_criminal_heatmap, map_path, [selected_year, selected_crime])
 
 
 @app.callback(
@@ -126,32 +111,23 @@ def update_special_crime_heatmap(selected_year, selected_crime):
     [Input(component_id='year-slider', component_property='value'),
     Input(component_id='crime-selector', component_property='value')])
 def update_special_crime_markers(selected_year, selected_crime):
-
     map_path = SPECIAL_CRIME_MARKERS_PATH + f'_{selected_crime}_crime_markers_{selected_year}.html'
-
-    if not os.path.exists(map_path):
-        print(f'Cached map  {map_path} not found')
-        generate_special_criminal_markers(selected_year, selected_crime, map_path)
-
-    with open(map_path) as f:
-        map = f.read()
-
-    return map
+    return generate_map(generate_special_criminal_markers, map_path, [selected_year, selected_crime])
 
 
-def generate_criminal_heatmap(year, map_path):
+def generate_criminal_heatmap(map_path, year):
 
-    print('>'*10 +f'Creating new heatmap {map_path}')  
+    log(f'Creating new heatmap {map_path}', 15)  
     crimes_by_area_df = data.filter(data.Year == year)\
         .groupBy('Community Area')\
         .count()\
         .toPandas()
 
-    print('>'*15 +f'Creating new heatmap {map_path}: Data collected')  
+    log(f'Creating new heatmap {map_path}: Data collected', 15)  
 
     global area_names_df
     if area_names_df is None:
-        area_names_df = get_areas_names(community_geojson)
+        area_names_df = _get_areas_names(community_geojson)
     crimes_by_area = pd.merge(area_names_df, crimes_by_area_df)    
 
     m = folium.Map(location=[41.751657125,-87.650130681], zoom_start = 10)
@@ -167,23 +143,23 @@ def generate_criminal_heatmap(year, map_path):
     choropleth.geojson.add_child(
         folium.features.GeoJsonTooltip(['community'],labels=False)
     )
-    print('>'*15 +f'Creating new heatmap {map_path}: Map is ready')  
+    log(f'Creating new heatmap {map_path}: Map is ready', 15)  
     m.save(map_path)
 
 
-def generate_special_criminal_heatmap(year, crime_type, map_path ):
+def generate_special_criminal_heatmap(map_path, year, crime_type):
 
-    print('>'*10 +f'Creating new special criminal heatmap {map_path}')  
+    log(f'Creating new special criminal heatmap {map_path}', 15)  
     per_year_dataset = data.filter(data.Year == year)
     special_crimes_by_area_df = per_year_dataset.filter(per_year_dataset['Primary Type'] == crime_type)\
         .groupBy('Community Area')\
         .count()\
         .toPandas()
 
-    print('>'*15 +f'Creating new special criminal heatmap {map_path}: Data collected')  
+    log(f'Creating new special criminal heatmap {map_path}: Data collected', 15)  
     global area_names_df
     if area_names_df is None:
-        area_names_df = get_areas_names(community_geojson)
+        area_names_df = _get_areas_names(community_geojson)
     special_crimes_by_area = pd.merge(area_names_df, special_crimes_by_area_df) 
 
     m = folium.Map(location=[41.751657125,-87.650130681], zoom_start = 10)
@@ -201,18 +177,18 @@ def generate_special_criminal_heatmap(year, crime_type, map_path ):
         folium.features.GeoJsonTooltip(['community'],labels=False)
     )
 
-    print('>'*15 +f'Creating new special criminal heatmap {map_path}: Map is ready')  
+    log(f'Creating new special criminal heatmap {map_path}: Map is ready', 15)  
     m.save(map_path)
 
 
-def generate_special_criminal_markers(year, crime_type, map_path ):
+def generate_special_criminal_markers(map_path, year, crime_type):
 
-    print('>'*10 +f'Creating new special criminal markers {map_path}')  
+    log(f'Creating new special criminal markers {map_path}', 15)  
     per_year_dataset = data.filter(data.Year == year)
     special_type_crimes =  per_year_dataset.filter(per_year_dataset['Primary Type'] == crime_type)\
         .collect()
 
-    print('>'*15 +f'Creating new special criminal markers {map_path}: Data collected')  
+    log(f'Creating new special criminal markers {map_path}: Data collected', 15)  
 
     m = folium.Map(location=[41.751657125,-87.650130681], zoom_start = 10)
     marker_cluster = MarkerCluster().add_to(m)
@@ -227,13 +203,12 @@ def generate_special_criminal_markers(year, crime_type, map_path ):
             fill_opacity = 0.95
         ).add_to(marker_cluster)
 
-    print('>'*15 +f'Creating new special criminal markers {map_path}: Map is ready')  
+    log(f'Creating new special criminal markers {map_path}: Map is ready', 15)  
     m.save(map_path)
 
 
-def get_areas_names(community_geojson):
-    # Map community area number with area's name using geojson from
-    
+def _get_areas_names(community_geojson):
+      
     with open(community_geojson) as f:
         community_dict = json.load(f)
     
@@ -254,22 +229,23 @@ def get_areas_names(community_geojson):
 
 if __name__ == '__main__':
 
-    print('>'*10 +"init spark")
+    log('init spark', 5)
     spark = SparkSession.builder\
         .master("local[*]")\
         .appName("ChicagoCriminalProject")\
         .getOrCreate()  
 
-    print('>'*10 + "init dataset")
+    log('init dataset', 5)
     data = spark.read.csv("Crimes_-_2001_to_Present.csv", inferSchema=True, header =True)
 
-    print('>'*10 +"init data")
-    data = data.dropna(subset=('latitude','longitude','Date'))\
+    log('init data', 5)
+    data = data\
+        .dropna(subset=('latitude','longitude','Date'))\
         .withColumn("Date", to_timestamp(data.Date, 'MM/dd/yyyy hh:mm:ss a'))\
         .select('Date', 'Year', 'Primary Type', 'Description', 'Location Description',
          'Arrest', 'Domestic', 'Community Area', 'Latitude', 'Longitude')
 
-    #export PYTHONPATH=/usr/local/spark/python/lib/py4j-0.10.9-src.zip:/usr/local/spark/python:
+    # export PYTHONPATH=/usr/local/spark/python/lib/py4j-0.10.9-src.zip:/usr/local/spark/python:
     app.run_server(debug=False)
 
     
