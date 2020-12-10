@@ -29,7 +29,7 @@ App is based on [jupyter/pyspark-notebook](https://hub.docker.com/r/jupyter/pysp
 docker pull jupyter/pyspark-notebook
 ```
 
-Run container and **export** PYTHON_PATH env var. It allows app to find Pyspark module:
+Run container
 
 ```shell
 docker run -d --name chicagoMap -p 8888:8888 -v <path to /HSE-Small-PySpark-Project>:/home/jovyan/work jupyter/pyspark-notebook
@@ -44,7 +44,7 @@ docker exec -it chicagoMap
 cd work
 ```
 
-Last steps:
+Last steps. **Export** PYTHON_PATH env var. It allows app to find Pyspark module:
 
 ```shell
 pip install -r requirements.txt
